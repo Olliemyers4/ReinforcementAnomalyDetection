@@ -1,0 +1,419 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: https://example.com/oscillation.guten-tag-generation-config.schema.yaml
+id: oscillation.guten-tag-generation-config.schema.yaml
+title: GutenTAG base oscillation configuration
+description: Base oscillation configuration for a time series.
+type: object
+required:
+  - kind
+properties:
+  kind:
+    type: string
+    enum:
+      - sine
+      - cosine
+      - random-walk
+      - ecg
+      - cylinder-bell-funnel
+      - polynomial
+      - random-mode-jump
+      - formula
+      - sawtooth
+      - square
+      - dirichlet
+      - mls
+      - custom-input
+    description: Kind of the base oscillation.
+oneOf:
+  - properties:
+      trend:
+        description: Trend to add to the base oscillation
+        $ref: "#"
+      offset:
+        type: number
+        description: Constant offset added to the base oscillation.
+      variance:
+        type: number
+        description: |
+          Variance of the signal relative to signal value.
+          This is also called white noise.
+          If set to 0, there is no noise.
+      kind:
+        const: sine
+      frequency:
+        type: number
+        description: Number of oscillations per 100 points (in Hz if 100 points = 1s).
+        minimum: 0
+      amplitude:
+        type: number
+        exclusiveMinimum: 0
+        description: |
+          Amplitude of the oscillation (+/- from 0).
+          It will be bounded to [-amplitude, amplitude].
+      freq-mod:
+        type: number
+        description: Factor of time-dependent frequency modulation (modulates the amplitude).
+    additionalProperties: false
+  - properties:
+      trend:
+        description: Trend to add to the base oscillation
+        $ref: "#"
+      offset:
+        type: number
+        description: Constant offset added to the base oscillation.
+      variance:
+        type: number
+        description: |
+          Variance of the signal relative to signal value.
+          This is also called white noise.
+          If set to 0, there is no noise.
+      kind:
+        const: cosine
+      frequency:
+        type: number
+        description: Number of oscillations per 100 points (in Hz if 100 points = 1s).
+        minimum: 0
+      amplitude:
+        type: number
+        exclusiveMinimum: 0
+        description: |
+          Amplitude of the oscillation (+/- from 0).
+          It will be bounded to [-amplitude, amplitude].
+      freq-mod:
+        type: number
+        description: Factor of time-dependent frequency modulation (modulates the amplitude).
+    additionalProperties: false
+  - properties:
+      trend:
+        description: Trend to add to the base oscillation
+        $ref: "#"
+      offset:
+        type: number
+        description: Constant offset added to the base oscillation.
+      variance:
+        type: number
+        description: |
+          Variance of the signal relative to signal value.
+          This is also called white noise.
+          If set to 0, there is no noise.
+      kind:
+        const: random-walk
+      amplitude:
+        type: number
+        exclusiveMinimum: 0
+        description: |
+          Amplitude of the oscillation (+/- from 0).
+          It will be bounded to [-amplitude, amplitude].
+      smoothing:
+        type: number
+        description: |
+          Smoothing factor for convolutional smoothing of the random walk.
+          Depends on the time series length.
+          Default is 0.01.
+    additionalProperties: false
+  - properties:
+      trend:
+        description: Trend to add to the base oscillation
+        $ref: "#"
+      offset:
+        type: number
+        description: Constant offset added to the base oscillation.
+      variance:
+        type: number
+        description: |
+          Variance of the signal relative to signal value.
+          This is also called white noise.
+          If set to 0, there is no noise.
+      kind:
+        const: cylinder-bell-funnel
+      amplitude:
+        type: number
+        exclusiveMinimum: 0
+        description: |
+          Amplitude of the oscillation (+/- from 0).
+          It will be bounded to [-amplitude, amplitude].
+      avg-pattern-length:
+        type: integer
+        description: Average length of the pattern in the time series.
+      variance-pattern-length:
+        type: number
+        description: Variance in the length of the pattern.
+      variance-amplitude:
+        type: number
+        description: Variance in the amplitude of the pattern.
+    additionalProperties: false
+  - properties:
+      trend:
+        description: Trend to add to the base oscillation
+        $ref: "#"
+      offset:
+        type: number
+        description: Constant offset added to the base oscillation.
+      variance:
+        type: number
+        description: |
+          Variance of the signal relative to signal value.
+          This is also called white noise.
+          If set to 0, there is no noise.
+      amplitude:
+        type: number
+        exclusiveMinimum: 0
+        description: |
+          Amplitude of the oscillation (+/- from 0).
+          It will be bounded to [-amplitude, amplitude].
+      kind:
+        const: ecg
+      frequency:
+        type: number
+        description: Number of oscillations (beats) per 100 points.
+        minimum: 0
+      ecg-sim-method:
+        type: string
+        enum:
+          - simple
+          - ecgsyn
+        description: |
+          The model used to generate the signal.
+          Can be either "simple" for a simulation based on Daubechies wavelets that roughly approximates a single cardiac cycle
+          or "ecgsyn" to use the dynamical model desbribed by McSharry et al. (2003) that includes variations in the heart beat cycles.
+    additionalProperties: false
+  - properties:
+      trend:
+        description: Trend to add to the base oscillation
+        $ref: "#"
+      offset:
+        type: number
+        description: Constant offset added to the base oscillation.
+      variance:
+        type: number
+        description: |
+          Variance of the signal relative to signal value.
+          This is also called white noise.
+          If set to 0, there is no noise.
+      kind:
+        const: polynomial
+      polynomial:
+        type: array
+        description: Polynomial coefficients in order of increasing degree, i.e., (1, 2, 3) give 1 + 2*x + 3*x**2.
+        minItems: 1
+        items:
+          type: number
+    required:
+      - polynomial
+    additionalProperties: false
+  - properties:
+      trend:
+        description: Trend to add to the base oscillation
+        $ref: "#"
+      offset:
+        type: number
+        description: Constant offset added to the base oscillation.
+      variance:
+        type: number
+        description: |
+          Variance of the signal relative to signal value.
+          This is also called white noise.
+          If set to 0, there is no noise.
+      kind:
+        const: random-mode-jump
+      frequency:
+        type: number
+        description: Number of oscillations per 100 points.
+        minimum: 0
+      channel-diff:
+        type: number
+        description: Value difference of absolute random mode values between channels.
+      channel-offset:
+        type: number
+        description: Value mean offset from 0 in both directions for the random mode jumps.
+      random-seed:
+        type: number
+        description: Random seed that can be used for different channels to get same base (random_mode_jump)
+    additionalProperties: false
+  - properties:
+      trend:
+        description: Trend to add to the base oscillation
+        $ref: "#"
+      offset:
+        type: number
+        description: Constant offset added to the base oscillation.
+      variance:
+        type: number
+        description: |
+          Variance of the signal relative to signal value.
+          This is also called white noise.
+          If set to 0, there is no noise.
+      kind:
+        const: formula
+      formula:
+        description: Formula based on other channels
+        type: object
+        $ref: formula.guten-tag-generation-config.schema.yaml
+    required:
+      - formula
+    additionalProperties: false
+  - properties:
+      trend:
+        description: Trend to add to the base oscillation
+        $ref: "#"
+      offset:
+        type: number
+        description: Constant offset added to the base oscillation.
+      variance:
+        type: number
+        description: |
+          Variance of the signal relative to signal value.
+          This is also called white noise.
+          If set to 0, there is no noise.
+      kind:
+        const: square
+      frequency:
+        type: number
+        description: Number of oscillations per 100 points (in Hz if 100 points = 1s).
+        minimum: 0
+      amplitude:
+        type: number
+        exclusiveMinimum: 0
+        description: |
+          Amplitude of the oscillation (+/- from 0).
+          It will be bounded to [-amplitude, amplitude].
+      freq-mod:
+        type: number
+        description: Factor of time-dependent frequency modulation (modulates the amplitude).
+      duty:
+        type: number
+        description: load percentage (time spent in high state compared to low state).
+    additionalProperties: false
+  - properties:
+      trend:
+        description: Trend to add to the base oscillation
+        $ref: "#"
+      offset:
+        type: number
+        description: Constant offset added to the base oscillation.
+      variance:
+        type: number
+        description: |
+          Variance of the signal relative to signal value.
+          This is also called white noise.
+          If set to 0, there is no noise.
+      kind:
+        const: sawtooth
+      frequency:
+        type: number
+        description: Number of oscillations per 100 points (in Hz if 100 points = 1s).
+        minimum: 0
+      amplitude:
+        type: number
+        exclusiveMinimum: 0
+        description: |
+          Amplitude of the oscillation.
+          It will be bounded to [-amplitude, amplitude].
+      freq-mod:
+        type: number
+        description: Factor of time-dependent frequency modulation (modulates the amplitude).
+      width:
+        type: number
+        description: |
+          >0.5 rising, <0.5 falling; sets proportional width of rising slope.
+    additionalProperties: false
+  - properties:
+      trend:
+        description: Trend to add to the base oscillation
+        $ref: "#"
+      offset:
+        type: number
+        description: Constant offset added to the base oscillation.
+      variance:
+        type: number
+        description: |
+          Variance of the signal relative to signal value.
+          This is also called white noise.
+          If set to 0, there is no noise.
+      kind:
+        const: dirichlet
+      frequency:
+        type: number
+        description: Number of oscillations per 100 points (in Hz if 100 points = 1s).
+        minimum: 0
+      amplitude:
+        type: number
+        exclusiveMinimum: 0
+        description: |
+          Amplitude of the oscillation.
+          It will be bounded to [-amplitude, amplitude].
+      periodicity:
+        type: number
+        description: |
+          Sets the periodicity of the dirichlet wave (higher numbers have a higher complexity), but the high-level
+          period length is not changed. However, even periodicity numbers double the period length.
+    additionalProperties: false
+  - properties:
+      trend:
+        description: Trend to add to the base oscillation
+        $ref: "#"
+      offset:
+        type: number
+        description: Constant offset added to the base oscillation.
+      variance:
+        type: number
+        description: |
+          Variance of the signal relative to signal value.
+          This is also called white noise.
+          If set to 0, there is no noise.
+      kind:
+        const: mls
+      amplitude:
+        type: number
+        exclusiveMinimum: 0
+        description: |
+          Amplitude of the oscillation.
+          It will be bounded to [-amplitude, amplitude].
+      complexity:
+        type: number
+        exclusiveMinimum: 0
+        exclusiveMaximum: 16
+        description: |
+          The number of bits used to generate the sequence.
+          This controls the length of the repeating sequence and its complexity.
+      smoothing:
+        type: number
+        description: |
+          Smoothing factor for convolutional smoothing of the generated bit sequence (highly recommended).
+          Default is 0.01.
+    additionalProperties: false
+  - properties:
+      trend:
+        description: Trend to add to the base oscillation
+        $ref: "#"
+      offset:
+        type: number
+        description: Constant offset added to the base oscillation.
+      variance:
+        type: number
+        description: |
+          Variance of the signal relative to signal value.
+          This is also called white noise.
+          If set to 0, there is no noise.
+      kind:
+        const: custom-input
+      input-timeseries-path-train:
+        type: string
+        description: |
+          timeseries from input file path used for a (semi-)supevised training set.
+      input-timeseries-path-test:
+        type: string
+        description: |
+          timeseries from input file path used for a test set.
+      use-column-test:
+        type: [string, integer]
+        description: |
+          column of the test data input file(s) to use
+      use-column-train:
+        type: [string, integer]
+        description: |
+          column of the training data input file(s) to use
+      required:
+        - use-column-test
+        - input-timeseries-path-test
+    additionalProperties: false

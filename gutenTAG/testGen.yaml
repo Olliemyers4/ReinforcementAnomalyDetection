@@ -1,0 +1,30 @@
+timeseries:
+- name: test
+  length: 1000
+  channels: 3
+  base-oscillations:
+  - kind: sine
+    frequency: 4.0
+    amplitude: 1.0
+    variance: 0.05
+  - kind: cosine
+    frequency: 4.0
+    amplitude: 1.0
+    variance: 0.05
+  - kind: square
+    frequency: 4.0
+    amplitude: 1.0
+    variance: 0.05
+  anomalies:
+  - position: end
+    length: 10
+    kinds:
+    - kind: amplitude
+      amplitude_factor: 1.5
+    channel: 1
+  - position: middle
+    length: 20
+    kinds:
+    - kind: amplitude
+      amplitude_factor: 5.0
+    channel: 2

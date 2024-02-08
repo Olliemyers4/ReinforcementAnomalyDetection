@@ -1,0 +1,31 @@
+timeseries:
+- name: demo
+  length: 1000
+  channels: 3
+  base-oscillations:
+  - kind: sine
+    frequency: 4.0
+    amplitude: 1.0
+    variance: 0.05
+  - kind: sine
+    frequency: 4.0
+    amplitude: 1.0
+    variance: 0.05
+  - kind: sine
+  frequency: 4.0
+  amplitude: 1.0
+  variance: 0.05
+  anomalies:
+  - position: end
+    length: 10
+    kinds:
+    - kind: amplitude
+      amplitude_factor: 1.5
+    channel: 1
+  - position: end
+    length: 20
+    kinds:
+    - kind: amplitude
+      amplitude_factor: 5
+    channel: 2
+  
