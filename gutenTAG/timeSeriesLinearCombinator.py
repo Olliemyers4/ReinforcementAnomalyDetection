@@ -18,12 +18,13 @@ csvFiles = []
 for root, dirs, files in os.walk(topFolderForGenerated):
     for file in files:
         if file.endswith(".csv"):
-            csvFiles.append(os.path.join(root, file))
+            csvFiles.append(os.path.join(root,file))
 
 
 print("Found the following csv files:")
 for i in range(0,len(csvFiles)):
-    print(f"File {i}: {file}")
+    #we also need the folder name because all the csv files are named the same - test.csv
+    print(f"File {i}: {csvFiles[i]}")
 
 print("Which file would you like to use?")
 fileIndex = int(input("File Index:"))

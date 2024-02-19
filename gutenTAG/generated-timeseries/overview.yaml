@@ -2,40 +2,43 @@ generated-timeseries:
 - anomalies:
   - channel: 1
     kinds:
-    - amplitude_factor: 5.0
-      kind: amplitude
-    length: 5
-    position: beginning
-  - channel: 2
-    kinds:
     - amplitude_factor: 3.0
       kind: amplitude
-    length: 5
+    length: 30
     position: end
   - channel: 0
     kinds:
     - amplitude_factor: 2.0
       kind: amplitude
     length: 10
+    position: beginning
+  - channel: 2
+    kinds:
+    - amplitude_factor: 5.0
+      kind: amplitude
+    length: 10
     position: middle
   base-oscillations:
   - amplitude: 1.0
-    frequency: 4.0
+    freq-mod: 1.0
+    frequency: 10.0
     kind: sine
     variance: 0.05
-  - amplitude: 1.0
-    frequency: 5.0
+  - amplitude: 0.75
+    freq-mod: 1.0
+    frequency: 15.0
     kind: cosine
-    variance: 0.1
-  - amplitude: 2.0
-    frequency: 10.0
+    variance: 0.05
+  - amplitude: 1.0
+    freq-mod: 1.0
+    frequency: 12.0
     kind: square
-    variance: 0.2
+    variance: 0.1
   channels: 3
   generation-id: 0
   length: 1000
-  name: new
+  name: updated
 meta:
   download_link: https://gitlab.hpi.de/akita/guten-tag
-  git_commit_sha: null
+  git_commit_sha: b88058982ecf52ef1173ea6309259b72d8e29256
   seed: 11
