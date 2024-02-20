@@ -1,0 +1,39 @@
+timeseries:
+- name: updated
+  length: 1000
+  channels: 3
+  base-oscillations:
+  - kind: sine
+    frequency: 10.0
+    amplitude: 1.0
+    variance: 0.05
+    freq-mod: 1.0
+  - kind: cosine
+    frequency: 15.0
+    amplitude: 0.75
+    variance: 0.05
+    freq-mod: 1.0
+  - kind: square
+    frequency: 12.0
+    amplitude: 1.0
+    variance: 0.1
+    freq-mod: 1.0
+  anomalies:
+  - position: end
+    length: 30
+    kinds:
+    - kind: amplitude
+      amplitude_factor: 3.0
+    channel: 1
+  - position: beginning
+    length: 10
+    kinds:
+    - kind: amplitude
+      amplitude_factor: 2.0
+    channel: 0
+  - position: middle
+    length: 10
+    kinds:
+    - kind: amplitude
+      amplitude_factor: 5.0
+    channel: 2
