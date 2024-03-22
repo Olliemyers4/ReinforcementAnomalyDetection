@@ -11,8 +11,6 @@ import torch.nn.functional as F
 import pandas as pd
 import classes
 
-obj = classes.DQN(4,2)
-
 # set up matplotlib
 is_ipython = 'inline' in matplotlib.get_backend()
 if is_ipython:
@@ -76,7 +74,7 @@ def optimize_model():
     # Transpose the batch (see https://stackoverflow.com/a/19343/3343043 for
     # detailed explanation). This converts batch-array of Transitions
     # to Transition of batch-arrays.
-    batch = Transition(*zip(*transitions))
+    batch = classes.Transition(*zip(*transitions))
 
     # Compute a mask of non-final states and concatenate the batch elements
     # (a final state would've been the one after which simulation ended)
@@ -134,11 +132,9 @@ LR = 1e-3
 
 n_actions = 2 # 0 -> no anomaly, 1 -> anomaly
 
-
-
-
-TAG2 = pd.read_csv("testData.csv",header=0)
-TAG2,outcome2 = TAG2.iloc[:,0:4],TAG2.iloc[:,4] # split into observations and outcomes
+TAG = pd.read_csv("testData.csv",header=0)
+TAG,outcome = TAG.iloc[:,0:4],TAG.iloc[:,4] # split into observations and outcomes
+names = TAG.iloc[0].index.values
 
 # Make it episodic - split into episodes of n time steps # With N = 1000 each episode is 1000 time steps - 1 total episode
 # Each episode is a sequence of observations with a single outcomes - 1 if at least one of the observations is 1, 0 otherwise
@@ -146,18 +142,18 @@ TAG2,outcome2 = TAG2.iloc[:,0:4],TAG2.iloc[:,4] # split into observations and ou
 # TAG2 needs to be a 2D list where 1st dimension is the episode and 2nd dimension are the time steps within the episode
 
 N = 100 # 10 steps per episode
-step = int(len(TAG2)/N)
+step = int(len(TAG)/N)
 temp = []
-for i in range(0,len(TAG2),step): 
+for i in range(0,len(TAG),step): 
     # This is sketchy as it assumes that len(TAG2) is divisible by N - this code needs to be adapted to the generic case at some point
-    temp.append(TAG2.iloc[i:i+step].values)
-TAG2 = temp
+    temp.append(TAG.iloc[i:i+step].values)
+TAGSplit = temp
 
 # Now need to handle the outcomes
 temp = []
-for i in range(0,len(outcome2),step):
+for i in range(0,len(outcome),step):
     # This is sketchy as it assumes that len(TAG2) is divisible by N - this code needs to be adapted to the generic case at some point
-    holdingOutcome = outcome2.iloc[i:i+step].values
+    holdingOutcome = outcome.iloc[i:i+step].values
     for j in range(0,len(holdingOutcome)):
         if holdingOutcome[0] == 1:
             temp.append(1)
@@ -165,11 +161,7 @@ for i in range(0,len(outcome2),step):
         else:
             pass
         temp.append(0)
-outcome2 = temp
-
-TAG = pd.read_csv("testData.csv",header=0)
-TAG,outcome = TAG.iloc[:,0:4],TAG.iloc[:,4]  # todo fix this
-names = TAG.iloc[0].index.values
+outcomeSplit = temp
 
 #state is the observation of the environment
 state = TAG.iloc[0] #reset the environment and get the initial state - will need to import the data
@@ -189,7 +181,7 @@ episode_rewards = []
 
 
 def rewarding(action,iteration):
-    if action == outcome2[iteration]: #if correct action
+    if action == outcomeSplit[iteration]: #if correct action
       if action == 0: #if no anomaly
          return 1
       else: #if anomaly
@@ -215,7 +207,7 @@ for eachEpoch in range(epoch):
         #state = TAG2.iloc[0] #reset the environment and get the initial state - will need to import the data
         # Instead get the start of the episode
      
-        episode = TAG2[i_episode]
+        episode = TAGSplit[i_episode]
         state = torch.tensor(pd.Series(episode[0],index=names), dtype=torch.float32, device=device).unsqueeze(0)
         totalReward = 0
         for t in count():
@@ -255,7 +247,7 @@ for eachEpoch in range(epoch):
             target_net.load_state_dict(target_net_state_dict)
 
             if done:
-                maxReward = len(episode) * rewarding(outcome2[i_episode],i_episode)
+                maxReward = len(episode) * rewarding(outcomeSplit[i_episode],i_episode)
                 rewardPercent = totalReward/maxReward
                 episode_rewards.append(rewardPercent)
                 plot_rewards()
