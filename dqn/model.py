@@ -62,7 +62,7 @@ def selectAction(state, policyNet, device, stepsDone, EPSSTART, EPSEND, EPSDECAY
     sample = random.random()
     epsThreshold = EPSEND + (EPSSTART - EPSEND) * \
         math.exp(-1. * stepsDone / EPSDECAY)
-    stepsDdone += 1 #remember to update this
+    stepsDone += 1 #remember to update this
     if sample > epsThreshold:
         with torch.no_grad():
             # t.max(1) will return the largest column value of each row.

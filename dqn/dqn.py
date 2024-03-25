@@ -4,7 +4,7 @@ from itertools import count
 import torch
 import torch.optim as optim
 import pandas as pd
-import dqn.model as model
+import model # model.py
 
 # set up matplotlib
 isIpython = 'inline' in matplotlib.get_backend()
@@ -63,8 +63,8 @@ LR = 1e-3
 
 nActions = 2 # 0 -> no anomaly, 1 -> anomaly
 
-TAG = pd.read_csv("testData.csv",header=0)
-TAG,outcome = TAG.iloc[:,0:4],TAG.iloc[:,4] # split into observations and outcomes
+TAG = pd.read_csv("merged.csv",header=0)
+TAG,outcome = TAG.iloc[:,0:6],TAG.iloc[:,6] # split into observations and outcomes
 names = TAG.iloc[0].index.values
 
 # Make it episodic - split into episodes of n time steps # With N = 1000 each episode is 1000 time steps - 1 total episode
