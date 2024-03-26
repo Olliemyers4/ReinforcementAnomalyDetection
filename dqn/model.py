@@ -93,15 +93,19 @@ class DQN(nn.Module):
 
     def __init__(self, nObservations, nActions):
         super(DQN, self).__init__()
-        self.layer1 = nn.Linear(nObservations, 128)
-        self.layer2 = nn.Linear(128, 128)
-        self.layer3 = nn.Linear(128, nActions)
+        #self.layer1 = nn.Linear(nObservations, 64)
+        #self.layer2 = nn.Linear(64, 64)
+        #self.layer3 = nn.Linear(64, nActions)
+        self.layer1 = nn.LSTM(nObservations, 64,2,batch_first=True)
+        self.layer2 = nn.Linear(64, 2)
 
     # Called with either one element to determine next action, or a batch
     # during optimisation. Returns tensor([[left0exp,right0exp]...]).
     def forward(self, x):
-        x = F.relu(self.layer1(x))
-        x = F.relu(self.layer2(x))
-        return self.layer3(x)
+        #x = F.relu(self.layer1(x))
+        #x = F.relu(self.layer2(x))
+        #return self.layer3(x)
+        output,_ = self.layer1(x)
+        return self.layer2(output)
     
 

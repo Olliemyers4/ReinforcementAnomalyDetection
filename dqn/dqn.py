@@ -72,7 +72,7 @@ names = TAG.iloc[0].index.values
 
 # TAG2 needs to be a 2D list where 1st dimension is the episode and 2nd dimension are the time steps within the episode
 
-n = 100 # 10 steps per episode
+n = 100 # 1000/n steps per episode
 step = int(len(TAG)/n)
 temp = []
 for i in range(0,len(TAG),step): 
@@ -138,9 +138,11 @@ for eachEpoch in range(epoch):
         #state = TAG2.iloc[0] #reset the environment and get the initial state - will need to import the data
         # Instead get the start of the episode
      
+
         episode = TAGSplit[iEpisode]
         state = torch.tensor(pd.Series(episode[0],index=names), dtype=torch.float32, device=device).unsqueeze(0)
         totalReward = 0
+        #This is the loop for each episode
         for t in count():
             #iEpisode is the episode number
             #t is the time step within the episode
