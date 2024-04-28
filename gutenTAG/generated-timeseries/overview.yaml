@@ -2,19 +2,19 @@ generated-timeseries:
 - anomalies:
   - channel: 1
     kinds:
-    - amplitude_factor: 1.01
+    - amplitude_factor: 3.0
       kind: amplitude
     length: 30
     position: end
   - channel: 0
     kinds:
-    - amplitude_factor: 1.01
+    - amplitude_factor: 2.0
       kind: amplitude
     length: 10
     position: beginning
   - channel: 2
     kinds:
-    - amplitude_factor: 1.01
+    - amplitude_factor: 5.0
       kind: amplitude
     length: 10
     position: middle
@@ -40,5 +40,5 @@ generated-timeseries:
   name: updated
 meta:
   download_link: https://gitlab.hpi.de/akita/guten-tag
-  git_commit_sha: 594cf91babee8c58e1c099df71e399a9376aeb9d
+  git_commit_sha: a9fbb50b3e7f244eff98e9895f217daf301173e5
   seed: 11

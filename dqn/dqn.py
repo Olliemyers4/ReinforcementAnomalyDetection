@@ -15,7 +15,7 @@ plt.ion()
 
 # if GPU is to be used
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
+device = torch.device("cpu")
 
 
 def plotRewards(showResult=False):
@@ -61,7 +61,7 @@ TAU = 0.005
 LR = 1e-3
 
 
-nActions = 2 # 0 -> no anomaly, 1 -> anomaly
+nActions = 2 # 0th -> no anomaly, 1 -> anomaly
 
 TAG = pd.read_csv("merged.csv",header=0)
 TAG,outcome = TAG.iloc[:,0:6],TAG.iloc[:,6] # split into observations and outcomes
@@ -103,7 +103,7 @@ targetNet = model.DQN(nObservations, nActions).to(device)
 targetNet.load_state_dict(policyNet.state_dict())
 
 optimiser = optim.AdamW(policyNet.parameters(), lr=LR, amsgrad=True)
-memory = model.ReplayMemory(10000)
+memory = model.ReplayMemory(10000) # Needs to be a LOT lower
 
 
 stepsDone = 0
@@ -133,6 +133,7 @@ epoch = 100 #Do every episode 100 times
 for eachEpoch in range(epoch):
     #print("Epoch: ",eachEpoch)
     for iEpisode in range(numEpisodes):
+
         #print("Episode: ",iEpisode,)
         # Initialize the environment and get its state
         #state = TAG2.iloc[0] #reset the environment and get the initial state - will need to import the data
@@ -140,51 +141,73 @@ for eachEpoch in range(epoch):
      
 
         episode = TAGSplit[iEpisode]
-        state = torch.tensor(pd.Series(episode[0],index=names), dtype=torch.float32, device=device).unsqueeze(0)
-        totalReward = 0
-        #This is the loop for each episode
-        for t in count():
-            #iEpisode is the episode number
-            #t is the time step within the episode
-            action,stepsDone = model.selectAction(state, policyNet, device, stepsDone, EPSSTART, EPSEND, EPSDECAY)
-            reward = rewarding(action.item(),iEpisode) # reward of the episode
-            totalReward += reward
-            reward = torch.tensor([reward], device=device)
-            if t == len(episode)-1:
-                done = True
-            else:
-                observation = pd.Series(episode[t+1],index=names)
-                done = False
+        #state = torch.tensor(pd.Series(episode[0],index=names), dtype=torch.float32, device=device).unsqueeze(0)
+        state = torch.tensor(episode, dtype=torch.float32, device=device).unsqueeze(0)
+        ##print(state.shape)
+        action,stepsDone = model.selectAction(state, policyNet, device, stepsDone, EPSSTART, EPSEND, EPSDECAY)
+        reward = rewarding(action.item(),iEpisode) # reward of the episode
+
+        # Next state is the next episode
+        if iEpisode == numEpisodes-1:            
+            pass
+        else: 
+            nextState = TAGSplit[iEpisode+1]
+            memory.push(state, action,nextState, reward)
+
+      
+        model.optimiseModel(memory,BATCHSIZE,GAMMA,policyNet,targetNet,optimiser,device)
+        targetNetStateDict = targetNet.state_dict()
+        policyNetStateDict = policyNet.state_dict()
+        for key in policyNetStateDict:
+            targetNetStateDict[key] = policyNetStateDict[key]*TAU + targetNetStateDict[key]*(1-TAU)
+        targetNet.load_state_dict(targetNetStateDict)
+        episodeRewards.append(reward)
+        plotRewards()
+
+        # totalReward = 0
+        # #This is the loop for each episode
+        # for t in count():
+        #     #iEpisode is the episode number
+        #     #t is the time step within the episode
+        #     action,stepsDone = model.selectAction(state, policyNet, device, stepsDone, EPSSTART, EPSEND, EPSDECAY)
+        #     reward = rewarding(action.item(),iEpisode) # reward of the episode
+        #     totalReward += reward
+        #     reward = torch.tensor([reward], device=device)
+        #     if t == len(episode)-1:
+        #         done = True
+        #     else:
+        #         observation = pd.Series(episode[t+1],index=names)
+        #         done = False
 
 
-            if done:
-                nextState = None
-            else:
-                nextState = torch.tensor(observation, dtype=torch.float32, device=device).unsqueeze(0)
+        #     if done:
+        #         nextState = None
+        #     else:
+        #         nextState = torch.tensor(observation, dtype=torch.float32, device=device).unsqueeze(0)
 
-            # Store the transition in memory
-            memory.push(state, action, nextState, reward)
+        #     # Store the transition in memory
+        #     memory.push(state, action, nextState, reward)
 
-            # Move to the next state
-            state = nextState
+        #     # Move to the next state
+        #     state = nextState
 
-            # Perform one step of the optimisation (on the policy network)
-            model.optimiseModel(memory,BATCHSIZE,GAMMA,policyNet,targetNet,optimiser,device)
+        #     # Perform one step of the optimisation (on the policy network)
+        #     model.optimiseModel(memory,BATCHSIZE,GAMMA,policyNet,targetNet,optimiser,device)
 
-            # Soft update of the target network's weights
-            # θ′ ← τ θ + (1 −τ )θ′
-            targetNetStateDict = targetNet.state_dict()
-            policyNetStateDict = policyNet.state_dict()
-            for key in policyNetStateDict:
-                targetNetStateDict[key] = policyNetStateDict[key]*TAU + targetNetStateDict[key]*(1-TAU)
-            targetNet.load_state_dict(targetNetStateDict)
+        #     # Soft update of the target network's weights
+        #     # θ′ ← τ θ + (1 −τ )θ′
+        #     targetNetStateDict = targetNet.state_dict()
+        #     policyNetStateDict = policyNet.state_dict()
+        #     for key in policyNetStateDict:
+        #         targetNetStateDict[key] = policyNetStateDict[key]*TAU + targetNetStateDict[key]*(1-TAU)
+        #     targetNet.load_state_dict(targetNetStateDict)
 
-            if done:
-                maxReward = len(episode) * rewarding(outcomeSplit[iEpisode],iEpisode)
-                rewardPercent = totalReward/maxReward
-                episodeRewards.append(rewardPercent)
-                plotRewards()
-                break
+        #     if done:
+        #         maxReward = len(episode) * rewarding(outcomeSplit[iEpisode],iEpisode)
+        #         rewardPercent = totalReward/maxReward
+        #         episodeRewards.append(rewardPercent)
+        #         plotRewards()
+        #         break
 
 print('Complete')
 plotRewards(showResult=True)
