@@ -15,7 +15,7 @@ plt.ion()
 
 # if GPU is to be used
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-device = torch.device("cpu")
+#device = torch.device("cpu") #DEBUG - force CPU
 
 
 def plotRewards(showResult=False):
@@ -64,15 +64,16 @@ LR = 1e-3
 nActions = 2 # 0th -> no anomaly, 1 -> anomaly
 
 TAG = pd.read_csv("merged.csv",header=0)
-TAG,outcome = TAG.iloc[:,0:6],TAG.iloc[:,6] # split into observations and outcomes
+TAG,outcome = TAG.iloc[:,0:7],TAG.iloc[:,7] # split into observations and outcomes
 names = TAG.iloc[0].index.values
+
 
 # Make it episodic - split into episodes of n time steps # With N = 1000 each episode is 1000 time steps - 1 total episode
 # Each episode is a sequence of observations with a single outcomes - 1 if at least one of the observations is 1, 0 otherwise
 
 # TAG2 needs to be a 2D list where 1st dimension is the episode and 2nd dimension are the time steps within the episode
 
-n = 100 # 1000/n steps per episode
+n = 1000 # 1000/n steps per episode # TODO switch to 100 again - having 1000 = 1 step per episode is just for testing
 step = int(len(TAG)/n)
 temp = []
 for i in range(0,len(TAG),step): 
@@ -86,7 +87,7 @@ for i in range(0,len(outcome),step):
     # This is sketchy as it assumes that len(TAG2) is divisible by N - this code needs to be adapted to the generic case at some point
     holdingOutcome = outcome.iloc[i:i+step].values
     for j in range(0,len(holdingOutcome)):
-        if holdingOutcome[0] == 1:
+        if holdingOutcome[j] == 1:
             temp.append(1)
             break
         else:
@@ -142,16 +143,16 @@ for eachEpoch in range(epoch):
 
         episode = TAGSplit[iEpisode]
         #state = torch.tensor(pd.Series(episode[0],index=names), dtype=torch.float32, device=device).unsqueeze(0)
-        state = torch.tensor(episode, dtype=torch.float32, device=device).unsqueeze(0)
+        state = torch.tensor(episode, dtype=torch.float32, device=device)
         ##print(state.shape)
-        action,stepsDone = model.selectAction(state, policyNet, device, stepsDone, EPSSTART, EPSEND, EPSDECAY)
+        action = model.selectAction(state, policyNet, device, stepsDone, EPSSTART, EPSEND, EPSDECAY)
         reward = rewarding(action.item(),iEpisode) # reward of the episode
-
+        reward = torch.tensor([reward], device=device)
         # Next state is the next episode
         if iEpisode == numEpisodes-1:            
             pass
         else: 
-            nextState = TAGSplit[iEpisode+1]
+            nextState = torch.tensor(TAGSplit[iEpisode+1], dtype=torch.float32, device=device)
             memory.push(state, action,nextState, reward)
 
       
