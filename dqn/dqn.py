@@ -73,7 +73,7 @@ names = TAG.iloc[0].index.values
 
 # TAG2 needs to be a 2D list where 1st dimension is the episode and 2nd dimension are the time steps within the episode
 
-n = 1000 # 1000/n steps per episode # TODO switch to 100 again - having 1000 = 1 step per episode is just for testing
+n = 100 # 1000/n steps per episode # TODO switch to 100 again - having 1000 = 1 step per episode is just for testing
 step = int(len(TAG)/n)
 temp = []
 for i in range(0,len(TAG),step): 
@@ -86,12 +86,9 @@ temp = []
 for i in range(0,len(outcome),step):
     # This is sketchy as it assumes that len(TAG2) is divisible by N - this code needs to be adapted to the generic case at some point
     holdingOutcome = outcome.iloc[i:i+step].values
-    for j in range(0,len(holdingOutcome)):
-        if holdingOutcome[j] == 1:
-            temp.append(1)
-            break
-        else:
-            pass
+    if any(holdingOutcome) == 1:
+        temp.append(1)
+    else:
         temp.append(0)
 outcomeSplit = temp
 
@@ -150,7 +147,7 @@ for eachEpoch in range(epoch):
         reward = torch.tensor([reward], device=device)
         # Next state is the next episode
         if iEpisode == numEpisodes-1:            
-            pass
+            pass #TODO fix this
         else: 
             nextState = torch.tensor(TAGSplit[iEpisode+1], dtype=torch.float32, device=device)
             memory.push(state, action,nextState, reward)
