@@ -40,7 +40,7 @@ def optimiseModel(memory,BATCHSIZE,GAMMA,policyNet,targetNet,optimiser,device):
     # state value or 0 in case the state was final.
     next_state_values = torch.zeros(BATCHSIZE, device=device)
     with torch.no_grad():
-        next_state_values[non_final_mask] = targetNet(non_final_next_states).max(0).values.unsqueeze(0).max(1).values
+        next_state_values[non_final_mask] = targetNet(non_final_next_states)[-1].unsqueeze(0).max(1).values
     # Compute the expected Q values
     expected_state_action_values = (next_state_values * GAMMA) + reward_batch
 
@@ -66,7 +66,8 @@ def selectAction(state, policyNet, device, stepsDone, EPSSTART, EPSEND, EPSDECAY
             # t.max(1) will return the largest column value of each row.
             # second column on max result is index of where max element was
             # found, so we pick action with the larger expected reward.
-            return policyNet(state).max(0).values.unsqueeze(0).max(1).indices.view(1, 1)
+
+            return policyNet(state)[-1].unsqueeze(0).max(1).indices.view(1, 1)
             #return policyNet(state).max(1).indices.view(1, 1)
     else:
         action = random.choice([0, 1])
