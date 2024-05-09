@@ -53,7 +53,7 @@ def plotRewards(showResult=False):
 # LR is the learning rate of the ``AdamW`` optimiser
 
 BATCHSIZE = 128
-GAMMA = 0.99
+GAMMA = 0.01
 EPSSTART = 0.9
 EPSEND = 0.05
 EPSDECAY = 1000
@@ -63,8 +63,8 @@ LR = 1e-3
 
 nActions = 2 # 0th -> no anomaly, 1 -> anomaly
 
-TAG = pd.read_csv("merged.csv",header=0)
-TAG,outcome = TAG.iloc[:,0:7],TAG.iloc[:,7] # split into observations and outcomes
+TAG = pd.read_csv("normalised.csv",header=0)
+TAG,outcome = TAG.iloc[:,1:7],TAG.iloc[:,7] # split into observations and outcomes
 names = TAG.iloc[0].index.values
 
 
@@ -136,6 +136,7 @@ for eachEpoch in range(epoch):
      
 
         episode = TAGSplit[iEpisode]
+    
         #state = torch.tensor(pd.Series(episode[0],index=names), dtype=torch.float32, device=device).unsqueeze(0)
         state = torch.tensor(episode, dtype=torch.float32, device=device)
         ##print(state.shape)
