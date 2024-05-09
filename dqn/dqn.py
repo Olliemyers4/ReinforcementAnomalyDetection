@@ -125,6 +125,8 @@ numEpisodes = len(TAGSplit)
 epoch = 100 #Do every episode 100 times
 for eachEpoch in range(epoch):
     #print("Epoch: ",eachEpoch)
+    correctSequentially = 1
+    incorrectSequentially = 1
     for iEpisode in range(numEpisodes):
 
         #print("Episode: ",iEpisode,)
@@ -139,6 +141,16 @@ for eachEpoch in range(epoch):
         ##print(state.shape)
         action = model.selectAction(state, policyNet, device, stepsDone, EPSSTART, EPSEND, EPSDECAY)
         reward = rewarding(action.item(),iEpisode) # reward of the episode
+        if reward > 0:
+            reward = reward * correctSequentially
+            correctSequentially += 1
+            incorrectSequentially = 1
+        else:
+            reward = reward * incorrectSequentially
+            incorrectSequentially += 1
+            correctSequentially = 1
+            
+
         reward = torch.tensor([reward], device=device)
         # Next state is the next episode
         if iEpisode == numEpisodes-1:            
