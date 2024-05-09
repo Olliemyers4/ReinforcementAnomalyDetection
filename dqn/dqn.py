@@ -73,7 +73,7 @@ names = TAG.iloc[0].index.values
 
 # TAG2 needs to be a 2D list where 1st dimension is the episode and 2nd dimension are the time steps within the episode
 
-n = 100 # 1000/n steps per episode # TODO switch to 100 again - having 1000 = 1 step per episode is just for testing
+n = 100 # 1000/n steps per episode
 step = int(len(TAG)/n)
 temp = []
 for i in range(0,len(TAG),step): 
@@ -147,7 +147,8 @@ for eachEpoch in range(epoch):
         reward = torch.tensor([reward], device=device)
         # Next state is the next episode
         if iEpisode == numEpisodes-1:            
-            pass #TODO fix this
+            nextState = None
+            memory.push(state, action,nextState, reward)
         else: 
             nextState = torch.tensor(TAGSplit[iEpisode+1], dtype=torch.float32, device=device)
             memory.push(state, action,nextState, reward)
@@ -162,51 +163,7 @@ for eachEpoch in range(epoch):
         episodeRewards.append(reward)
         plotRewards()
 
-        # totalReward = 0
-        # #This is the loop for each episode
-        # for t in count():
-        #     #iEpisode is the episode number
-        #     #t is the time step within the episode
-        #     action,stepsDone = model.selectAction(state, policyNet, device, stepsDone, EPSSTART, EPSEND, EPSDECAY)
-        #     reward = rewarding(action.item(),iEpisode) # reward of the episode
-        #     totalReward += reward
-        #     reward = torch.tensor([reward], device=device)
-        #     if t == len(episode)-1:
-        #         done = True
-        #     else:
-        #         observation = pd.Series(episode[t+1],index=names)
-        #         done = False
-
-
-        #     if done:
-        #         nextState = None
-        #     else:
-        #         nextState = torch.tensor(observation, dtype=torch.float32, device=device).unsqueeze(0)
-
-        #     # Store the transition in memory
-        #     memory.push(state, action, nextState, reward)
-
-        #     # Move to the next state
-        #     state = nextState
-
-        #     # Perform one step of the optimisation (on the policy network)
-        #     model.optimiseModel(memory,BATCHSIZE,GAMMA,policyNet,targetNet,optimiser,device)
-
-        #     # Soft update of the target network's weights
-        #     # θ′ ← τ θ + (1 −τ )θ′
-        #     targetNetStateDict = targetNet.state_dict()
-        #     policyNetStateDict = policyNet.state_dict()
-        #     for key in policyNetStateDict:
-        #         targetNetStateDict[key] = policyNetStateDict[key]*TAU + targetNetStateDict[key]*(1-TAU)
-        #     targetNet.load_state_dict(targetNetStateDict)
-
-        #     if done:
-        #         maxReward = len(episode) * rewarding(outcomeSplit[iEpisode],iEpisode)
-        #         rewardPercent = totalReward/maxReward
-        #         episodeRewards.append(rewardPercent)
-        #         plotRewards()
-        #         break
-
+       
 print('Complete')
 plotRewards(showResult=True)
 plt.ioff()
