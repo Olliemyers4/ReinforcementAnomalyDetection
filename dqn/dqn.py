@@ -101,7 +101,7 @@ targetNet = model.DQN(nObservations, nActions).to(device)
 targetNet.load_state_dict(policyNet.state_dict())
 
 optimiser = optim.AdamW(policyNet.parameters(), lr=LR, amsgrad=True)
-memory = model.ReplayMemory(10000) # Needs to be a LOT lower
+memory = model.ReplayMemory(1000)
 
 
 stepsDone = 0
@@ -120,13 +120,8 @@ def rewarding(action,iteration):
          return -5
       else: #says there is anomaly but there isn't
          return -1
-      
 
-if torch.cuda.is_available():
-    numEpisodes = n 
-else:
-    numEpisodes = 50 #Dont use CPU :)
-
+numEpisodes = len(TAGSplit)
 epoch = 100 #Do every episode 100 times
 for eachEpoch in range(epoch):
     #print("Epoch: ",eachEpoch)
