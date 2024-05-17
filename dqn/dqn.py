@@ -54,11 +54,11 @@ def plotRewards(showResult=False):
 
 BATCHSIZE = 128
 GAMMA = 0.01
-EPSSTART = 0.9
-EPSEND = 0.05
-EPSDECAY = 1000
+EPSSTART = 0.5 #TODO STOP USING EPSILON GREEDY - keeps getting stuck
+EPSEND = 0.00
+EPSDECAY = 100
 TAU = 0.005
-LR = 1e-3
+LR = 1e-4
 
 
 nActions = 2 # 0th -> no anomaly, 1 -> anomaly
@@ -142,14 +142,14 @@ for eachEpoch in range(epoch):
         ##print(state.shape)
         action = model.selectAction(state, policyNet, device, stepsDone, EPSSTART, EPSEND, EPSDECAY)
         reward = rewarding(action.item(),iEpisode) # reward of the episode
-        if reward > 0:
-            reward = reward * correctSequentially
-            correctSequentially += 1
-            incorrectSequentially = 1
-        else:
-            reward = reward * incorrectSequentially
-            incorrectSequentially += 1
-            correctSequentially = 1
+        # if reward > 0:
+        #     reward = reward * correctSequentially
+        #     correctSequentially += 1
+        #     incorrectSequentially = 1
+        # else:
+        #     reward = reward * incorrectSequentially
+        #     incorrectSequentially += 1
+        #     correctSequentially = 1
             
 
         reward = torch.tensor([reward], device=device)
