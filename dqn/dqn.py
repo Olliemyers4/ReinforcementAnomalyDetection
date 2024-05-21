@@ -73,24 +73,26 @@ names = TAG.iloc[0].index.values
 
 # TAG2 needs to be a 2D list where 1st dimension is the episode and 2nd dimension are the time steps within the episode
 
-n = 100 # 1000/n steps per episode
-step = int(len(TAG)/n)
+
+steps = 10  # 10 per episode
+
 temp = []
-for i in range(0,len(TAG),step): 
+for i in range(0,len(TAG)-steps+1): 
     # This is sketchy as it assumes that len(TAG2) is divisible by N - this code needs to be adapted to the generic case at some point
-    temp.append(TAG.iloc[i:i+step].values)
+    temp.append(TAG.iloc[i:i+steps].values)
 TAGSplit = temp
 
 # Now need to handle the outcomes
 temp = []
-for i in range(0,len(outcome),step):
+for i in range(0,len(outcome)-steps+1):
     # This is sketchy as it assumes that len(TAG2) is divisible by N - this code needs to be adapted to the generic case at some point
-    holdingOutcome = outcome.iloc[i:i+step].values
+    holdingOutcome = outcome.iloc[i:i+steps].values
     if any(holdingOutcome) == 1:
         temp.append(1)
     else:
         temp.append(0)
 outcomeSplit = temp
+
 
 #state is the observation of the environment
 state = TAG.iloc[0] #reset the environment and get the initial state - will need to import the data
