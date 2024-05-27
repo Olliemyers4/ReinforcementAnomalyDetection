@@ -75,7 +75,7 @@ def selectAction(state, policyNet, device, stepsDone, EPSSTART, EPSEND, EPSDECAY
 
 
 Transition = namedtuple('Transition',
-                        ('state', 'action', 'nextState', 'reward'))
+                        ('state', 'action', 'nextState', 'reward','correctAction'))
 
 
 class ReplayMemory(object):
@@ -88,6 +88,19 @@ class ReplayMemory(object):
         self.memory.append(Transition(*args))
 
     def sample(self, batchSize):
+
+        #Sample with weight to correctaction == 1 as it is the minority class
+        sampleWeights = []
+        for i in range(len(self.memory)):
+            if self.memory[i].correctAction == 1:
+                sampleWeights.append(1)
+            else:
+                sampleWeights.append(0.1)
+        sampleWeights = np.array(sampleWeights)
+        sampleWeights = sampleWeights / sampleWeights.sum()
+        return random.choices(self.memory, weights=sampleWeights, k=batchSize)
+
+
         return random.sample(self.memory, batchSize)
 
     def __len__(self):

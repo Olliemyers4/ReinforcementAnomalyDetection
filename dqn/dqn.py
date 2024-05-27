@@ -54,10 +54,10 @@ def plotRewards(showResult=False):
 
 BATCHSIZE = 128
 GAMMA = 0.01
-EPSSTART = 0.5 #TODO STOP USING EPSILON GREEDY - keeps getting stuck
+EPSSTART = 0.3 #TODO STOP USING EPSILON GREEDY - keeps getting stuck
 EPSEND = 0.00
 EPSDECAY = 100
-TAU = 0.005
+TAU = 0.0005
 LR = 1e-4
 
 
@@ -103,7 +103,7 @@ targetNet = model.DQN(nObservations, nActions).to(device)
 targetNet.load_state_dict(policyNet.state_dict())
 
 optimiser = optim.AdamW(policyNet.parameters(), lr=LR, amsgrad=True)
-memory = model.ReplayMemory(1000)
+memory = model.ReplayMemory(400)
 
 
 stepsDone = 0
@@ -114,14 +114,14 @@ episodeRewards = []
 def rewarding(action,iteration):
     if action == outcomeSplit[iteration]: #if correct action
       if action == 0: #if no anomaly
-         return 1
+         return 3
       else: #if anomaly
-         return 5
+         return 20
     else: #if wrong action
       if action == 0: #says no anomaly but there is
-         return -5
+         return 0
       else: #says there is anomaly but there isn't
-         return -1
+         return 0
 
 numEpisodes = len(TAGSplit)
 epoch = 100 #Do every episode 100 times
@@ -152,16 +152,15 @@ for eachEpoch in range(epoch):
         #     reward = reward * incorrectSequentially
         #     incorrectSequentially += 1
         #     correctSequentially = 1
-            
-
+        correctAction = 0 if ((action.item() == 0 and reward > 0) or (action.item() == 1 and reward < 0)) else 1
         reward = torch.tensor([reward], device=device)
         # Next state is the next episode
         if iEpisode == numEpisodes-1:            
             nextState = None
-            memory.push(state, action,nextState, reward)
+            memory.push(state, action,nextState, reward,correctAction)
         else: 
             nextState = torch.tensor(TAGSplit[iEpisode+1], dtype=torch.float32, device=device)
-            memory.push(state, action,nextState, reward)
+            memory.push(state, action,nextState, reward,correctAction)
 
       
         model.optimiseModel(memory,BATCHSIZE,GAMMA,policyNet,targetNet,optimiser,device)
