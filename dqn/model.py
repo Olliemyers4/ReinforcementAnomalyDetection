@@ -61,17 +61,18 @@ def selectAction(state, policyNet, device, stepsDone, EPSSTART, EPSEND, EPSDECAY
     eps_threshold = EPSEND + (EPSSTART - EPSEND) * \
         math.exp(-1. * stepsDone / EPSDECAY)
     stepsDone += 1
+
     if sample > eps_threshold:
         with torch.no_grad():
             # t.max(1) will return the largest column value of each row.
             # second column on max result is index of where max element was
             # found, so we pick action with the larger expected reward.
 
-            return policyNet(state)[-1].unsqueeze(0).max(1).indices.view(1, 1)
+            return policyNet(state)[-1].unsqueeze(0).max(1).indices.view(1, 1),stepsDone
             #return policyNet(state).max(1).indices.view(1, 1)
     else:
         action = random.choice([0, 1])
-        return torch.tensor([[action]], device=device, dtype=torch.long)
+        return torch.tensor([[action]], device=device, dtype=torch.long),stepsDone
 
 
 Transition = namedtuple('Transition',

@@ -4,6 +4,7 @@ from itertools import count
 import torch
 import torch.optim as optim
 import pandas as pd
+import math
 import model # model.py
 
 # set up matplotlib
@@ -22,7 +23,7 @@ def plotRewards(showResult=False):
     plt.figure(1)
     plt.clf()
 
-    fig, axs = plt.subplots(2,num= 1)
+    fig, axs = plt.subplots(2,2,num= 1)
     axs = axs.flatten()
     durationsT = torch.tensor(episodeRewards, dtype=torch.float)
 
@@ -54,6 +55,16 @@ def plotRewards(showResult=False):
 
     ax.plot(chosenActionsT.numpy(), label='Predicted')
     ax.plot(correctActionsT.numpy(), label='True')
+    ax.legend()
+    #----------------------------------------------------------------------------------------------------------------
+    #Plot epsilon values
+    ax = axs[2]
+    ax.set_title('Epsilon')
+    ax.set_xlabel('Timestep')
+    ax.set_ylabel('Epsilon')
+    epsValuesT = torch.tensor(epsValues, dtype=torch.float)
+    ax.plot(epsValuesT.numpy())
+
 
     plt.pause(0.001)  # pause a bit so that plots are updated
     if isIpython:
@@ -126,6 +137,7 @@ stepsDone = 0
 episodeRewards = []
 chosenActions = []
 correctActions = []
+epsValues = []
 
 
 def rewarding(action,iteration):
@@ -151,7 +163,7 @@ for eachEpoch in range(epoch):
     
 
         state = torch.tensor(episode, dtype=torch.float32, device=device)
-        action = model.selectAction(state, policyNet, device, stepsDone, EPSSTART, EPSEND, EPSDECAY)
+        action,stepsDone = model.selectAction(state, policyNet, device, stepsDone, EPSSTART, EPSEND, EPSDECAY)
         reward = rewarding(action.item(),iEpisode) # reward of the episode
         correctAction = outcomeSplit[iEpisode]
 
@@ -174,6 +186,8 @@ for eachEpoch in range(epoch):
         episodeRewards.append(reward)
         chosenActions.append(action.item())
         correctActions.append(correctAction)
+        epsValues.append(EPSEND + (EPSSTART - EPSEND) * \
+        math.exp(-1. * stepsDone / EPSDECAY))
         plotRewards()
 
        
