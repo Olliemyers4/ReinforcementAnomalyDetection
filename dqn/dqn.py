@@ -20,20 +20,40 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 def plotRewards(showResult=False):
     plt.figure(1)
+    plt.clf()
+
+    fig, axs = plt.subplots(2,num= 1)
+    axs = axs.flatten()
     durationsT = torch.tensor(episodeRewards, dtype=torch.float)
+
+
+    #----------------------------------------------------------------------------------------------------------------
+    # Plotting the reward values over time with 100 point moving average
+    ax = axs[0]
+
     if showResult:
-        plt.title('Result')
+        ax.set_title('Result')
     else:
-        plt.clf()
-        plt.title('Training...')
-    plt.xlabel('Episode')
-    plt.ylabel('Reward')
-    plt.plot(durationsT.numpy())
+        ax.set_title('Training...')
+    ax.set_xlabel('Episode')
+    ax.set_ylabel('Reward')
+    ax.plot(durationsT.numpy())
     # Take 100 episode averages and plot them too
     if len(durationsT) >= 100:
         means = durationsT.unfold(0, 100, 1).mean(1).view(-1)
         means = torch.cat((torch.zeros(99), means))
-        plt.plot(means.numpy())
+        ax.plot(means.numpy())
+    #----------------------------------------------------------------------------------------------------------------
+    # Plot true values against predicted values
+    ax = axs[1]
+    ax.set_title('True vs Predicted')
+    ax.set_xlabel('Timestep')
+    ax.set_ylabel('Value')
+    chosenActionsT = torch.tensor(chosenActions, dtype=torch.float)
+    correctActionsT = torch.tensor(correctActions, dtype=torch.float)
+
+    ax.plot(chosenActionsT.numpy(), label='Predicted')
+    ax.plot(correctActionsT.numpy(), label='True')
 
     plt.pause(0.001)  # pause a bit so that plots are updated
     if isIpython:
@@ -61,21 +81,17 @@ TAU = 0.0005
 LR = 1e-4
 
 
-nActions = 2 # 0th -> no anomaly, 1 -> anomaly
+nActions = 2 # 0th -> no anomaly, 1st -> anomaly
 
 TAG = pd.read_csv("normalised.csv",header=0)
 TAG,outcome = TAG.iloc[:,1:7],TAG.iloc[:,7] # split into observations and outcomes
 names = TAG.iloc[0].index.values
 
 
-# Make it episodic - split into episodes of n time steps # With N = 1000 each episode is 1000 time steps - 1 total episode
 # Each episode is a sequence of observations with a single outcomes - 1 if at least one of the observations is 1, 0 otherwise
 
-# TAG2 needs to be a 2D list where 1st dimension is the episode and 2nd dimension are the time steps within the episode
-
-
-steps = 10  # 10 per episode
-
+#Create a sliding window of 'steps' time steps
+steps = 10  # 10 points per episode
 temp = []
 for i in range(0,len(TAG)-steps+1): 
     # This is sketchy as it assumes that len(TAG2) is divisible by N - this code needs to be adapted to the generic case at some point
@@ -85,7 +101,6 @@ TAGSplit = temp
 # Now need to handle the outcomes
 temp = []
 for i in range(0,len(outcome)-steps+1):
-    # This is sketchy as it assumes that len(TAG2) is divisible by N - this code needs to be adapted to the generic case at some point
     holdingOutcome = outcome.iloc[i:i+steps].values
     if any(holdingOutcome) == 1:
         temp.append(1)
@@ -95,7 +110,7 @@ outcomeSplit = temp
 
 
 #state is the observation of the environment
-state = TAG.iloc[0] #reset the environment and get the initial state - will need to import the data
+state = TAG.iloc[0] #reset the environment and get the initial state
 nObservations = len(state)
 
 policyNet = model.DQN(nObservations, nActions).to(device)
@@ -109,6 +124,8 @@ memory = model.ReplayMemory(400)
 stepsDone = 0
 
 episodeRewards = []
+chosenActions = []
+correctActions = []
 
 
 def rewarding(action,iteration):
@@ -124,40 +141,25 @@ def rewarding(action,iteration):
          return 0
 
 numEpisodes = len(TAGSplit)
-epoch = 100 #Do every episode 100 times
+epoch = 100 #Run through all the data 'epoch' times
 for eachEpoch in range(epoch):
     #print("Epoch: ",eachEpoch)
-    correctSequentially = 1
-    incorrectSequentially = 1
     for iEpisode in range(numEpisodes):
 
-        #print("Episode: ",iEpisode,)
         # Initialize the environment and get its state
-        #state = TAG2.iloc[0] #reset the environment and get the initial state - will need to import the data
-        # Instead get the start of the episode
-     
-
         episode = TAGSplit[iEpisode]
     
-        #state = torch.tensor(pd.Series(episode[0],index=names), dtype=torch.float32, device=device).unsqueeze(0)
+
         state = torch.tensor(episode, dtype=torch.float32, device=device)
-        ##print(state.shape)
         action = model.selectAction(state, policyNet, device, stepsDone, EPSSTART, EPSEND, EPSDECAY)
         reward = rewarding(action.item(),iEpisode) # reward of the episode
-        # if reward > 0:
-        #     reward = reward * correctSequentially
-        #     correctSequentially += 1
-        #     incorrectSequentially = 1
-        # else:
-        #     reward = reward * incorrectSequentially
-        #     incorrectSequentially += 1
-        #     correctSequentially = 1
-        correctAction = 0 if ((action.item() == 0 and reward > 0) or (action.item() == 1 and reward < 0)) else 1
+        correctAction = outcomeSplit[iEpisode]
+
         reward = torch.tensor([reward], device=device)
         # Next state is the next episode
         if iEpisode == numEpisodes-1:            
             nextState = None
-            memory.push(state, action,nextState, reward,correctAction)
+            memory.push(state, action,nextState, reward,correctAction)  # Correct action passed to memory for oversampling
         else: 
             nextState = torch.tensor(TAGSplit[iEpisode+1], dtype=torch.float32, device=device)
             memory.push(state, action,nextState, reward,correctAction)
@@ -170,6 +172,8 @@ for eachEpoch in range(epoch):
             targetNetStateDict[key] = policyNetStateDict[key]*TAU + targetNetStateDict[key]*(1-TAU)
         targetNet.load_state_dict(targetNetStateDict)
         episodeRewards.append(reward)
+        chosenActions.append(action.item())
+        correctActions.append(correctAction)
         plotRewards()
 
        
