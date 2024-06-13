@@ -5,7 +5,10 @@ import torch
 import torch.optim as optim
 import pandas as pd
 import math
+import time
+
 import model # model.py
+
 
 # set up matplotlib
 isIpython = 'inline' in matplotlib.get_backend()
@@ -20,6 +23,8 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 def plotRewards(showResult=False):
+    #tickPlot = time.time()
+    #tickPlotConfig = time.time()
     plt.figure(1)
     plt.clf()
 
@@ -27,9 +32,12 @@ def plotRewards(showResult=False):
     axs = axs.flatten()
     durationsT = torch.tensor(episodeRewards, dtype=torch.float)
 
+    #tockPlotConfig = time.time()
+    #print("Time taken to configure plot: ",tockPlotConfig-tickPlotConfig)
 
     #----------------------------------------------------------------------------------------------------------------
     # Plotting the reward values over time with 100 point moving average
+    #tickAvg = time.time()
     ax = axs[0]
 
     if showResult:
@@ -38,41 +46,69 @@ def plotRewards(showResult=False):
         ax.set_title('Training...')
     ax.set_xlabel('Episode')
     ax.set_ylabel('Reward')
-    ax.plot(durationsT.numpy())
+    plotDur = durationsT.numpy()
+    ax.plot(plotDur)
     # Take 100 episode averages and plot them too
     if len(durationsT) >= 100:
         means = durationsT.unfold(0, 100, 1).mean(1).view(-1)
-        means = torch.cat((torch.zeros(99), means))
-        ax.plot(means.numpy())
+        means = torch.cat((torch.zeros(99), means)).numpy()
+        ax.plot(means)
+
+    #tockAvg = time.time()
+    #print("Time taken to plot average: ",tockAvg-tickAvg)
     #----------------------------------------------------------------------------------------------------------------
     # Plot true values against predicted values
+    tickTruth = time.time()
     ax = axs[1]
     ax.set_title('True vs Predicted')
     ax.set_xlabel('Timestep')
     ax.set_ylabel('Value')
-    chosenActionsT = torch.tensor(chosenActions, dtype=torch.float)
-    correctActionsT = torch.tensor(correctActions, dtype=torch.float)
 
-    ax.plot(chosenActionsT.numpy(), label='Predicted')
-    ax.plot(correctActionsT.numpy(), label='True')
+    ax.plot(chosenActions, label='Predicted')
+    ax.plot(correctActions, label='True')
     ax.legend()
+
+    #tockTruth = time.time()
+    #print("Time taken to plot true vs predicted: ",tockTruth-tickTruth)
     #----------------------------------------------------------------------------------------------------------------
     #Plot epsilon values
+    #tickEpsilon = time.time()
     ax = axs[2]
     ax.set_title('Epsilon')
     ax.set_xlabel('Timestep')
     ax.set_ylabel('Epsilon')
-    epsValuesT = torch.tensor(epsValues, dtype=torch.float)
-    ax.plot(epsValuesT.numpy())
+    ax.plot(epsValues)
 
+    #tockEpsilon = time.time()
+    #print("Time taken to plot epsilon: ",tockEpsilon-tickEpsilon)
 
-    plt.pause(0.001)  # pause a bit so that plots are updated
+    #tickPause = time.time()
+    plt.pause(0.001)
     if isIpython:
         if not showResult:
             display.display(plt.gcf())
             display.clear_output(wait=True)
         else:
             display.display(plt.gcf())
+    #tockPause = time.time()
+    #print("Time taken to pause: ",tockPause-tickPause)
+
+
+    #tockPlot = time.time()
+    #print("Time taken to plot: ",tockPlot-tickPlot)
+
+
+def rewarding(action,iteration):
+    if action == outcomeSplit[iteration]: #if correct action
+      if action == 0: #if no anomaly
+         return 1
+      else: #if anomaly
+         return 20
+    else: #if wrong action
+      if action == 0: #says no anomaly but there is
+         return 0
+      else: #says there is anomaly but there isn't
+         return 0
 
 
 # BATCHSIZE is the number of transitions sampled from the replay buffer
@@ -83,18 +119,20 @@ def plotRewards(showResult=False):
 # TAU is the update rate of the target network
 # LR is the learning rate of the ``AdamW`` optimiser
 
-BATCHSIZE = 128
-GAMMA = 0.01
-EPSSTART = 0.3 #TODO STOP USING EPSILON GREEDY - keeps getting stuck
-EPSEND = 0.00
-EPSDECAY = 100
-TAU = 0.0005
+#tickSetup = time.time()
+
+BATCHSIZE = 256
+GAMMA = 0.5
+EPSSTART = 0.8
+EPSEND = 0.075
+EPSDECAY = 2000
+TAU = 1
 LR = 1e-4
 
 
 nActions = 2 # 0th -> no anomaly, 1st -> anomaly
 
-TAG = pd.read_csv("normalised.csv",header=0)
+TAG = pd.read_csv("normalised2.csv",header=0)
 TAG,outcome = TAG.iloc[:,1:7],TAG.iloc[:,7] # split into observations and outcomes
 names = TAG.iloc[0].index.values
 
@@ -105,17 +143,27 @@ names = TAG.iloc[0].index.values
 steps = 10  # 10 points per episode
 temp = []
 for i in range(0,len(TAG)-steps+1): 
-    # This is sketchy as it assumes that len(TAG2) is divisible by N - this code needs to be adapted to the generic case at some point
     temp.append(TAG.iloc[i:i+steps].values)
 TAGSplit = temp
 
 # Now need to handle the outcomes
 temp = []
+buffer = 2
 for i in range(0,len(outcome)-steps+1):
-    holdingOutcome = outcome.iloc[i:i+steps].values
+    if i < buffer:
+        start = 0
+    else:
+        start = i-buffer
+
+    if i+buffer+steps > len(outcome):
+        end = len(outcome)
+    else:
+        end = i+buffer+steps
+    holdingOutcome = outcome.iloc[start:end].values # buffer either side
     if any(holdingOutcome) == 1:
         temp.append(1)
     else:
+    
         temp.append(0)
 outcomeSplit = temp
 
@@ -129,7 +177,7 @@ targetNet = model.DQN(nObservations, nActions).to(device)
 targetNet.load_state_dict(policyNet.state_dict())
 
 optimiser = optim.AdamW(policyNet.parameters(), lr=LR, amsgrad=True)
-memory = model.ReplayMemory(400)
+memory = model.ReplayMemory(800)
 
 
 stepsDone = 0
@@ -140,23 +188,19 @@ correctActions = []
 epsValues = []
 
 
-def rewarding(action,iteration):
-    if action == outcomeSplit[iteration]: #if correct action
-      if action == 0: #if no anomaly
-         return 3
-      else: #if anomaly
-         return 20
-    else: #if wrong action
-      if action == 0: #says no anomaly but there is
-         return 0
-      else: #says there is anomaly but there isn't
-         return 0
-
 numEpisodes = len(TAGSplit)
 epoch = 100 #Run through all the data 'epoch' times
+
+#tockSetup = time.time()
+#print("Time taken to setup: ",tockSetup-tickSetup)
+
+counter = 0
 for eachEpoch in range(epoch):
+    #tickEpoch = time.time()
     #print("Epoch: ",eachEpoch)
     for iEpisode in range(numEpisodes):
+        counter += 1
+        #tickEpisode = time.time()
 
         # Initialize the environment and get its state
         episode = TAGSplit[iEpisode]
@@ -188,7 +232,12 @@ for eachEpoch in range(epoch):
         correctActions.append(correctAction)
         epsValues.append(EPSEND + (EPSSTART - EPSEND) * \
         math.exp(-1. * stepsDone / EPSDECAY))
-        plotRewards()
+        #tockEpisode = time.time()
+        #print("Time taken for episode: ",tockEpisode-tickEpisode)
+        if counter % 100 == 0:
+            plotRewards()
+    #tockEpoch = time.time()
+    #print("Time taken for epoch: ",tockEpoch-tickEpoch)
 
        
 print('Complete')
