@@ -42,7 +42,6 @@ class Autoencoder(nn.Module):
         self.layers = layers
 
     def forward(self, x, hidden=None):
-        batch_size = x.size(0)
         if hidden is None:
             _, (hidden, cell) = self.encoder(x)
             hidden = hidden.repeat(self.layers, 1, 1)
