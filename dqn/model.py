@@ -94,7 +94,7 @@ class ReplayMemory(object):
         sampleWeights = []
         for i in range(len(self.memory)):
             if self.memory[i].correctAction == 1:
-                sampleWeights.append(0.75)
+                sampleWeights.append(0.25)
             else:
                 sampleWeights.append(0.1)
         sampleWeights = np.array(sampleWeights)
@@ -112,15 +112,14 @@ class DQN(nn.Module):
 
     def __init__(self, nObservations, nActions):
         super(DQN, self).__init__()
-        self.layer1 = nn.LSTM(nObservations, 64,2,batch_first=True)
-        self.layer2 = nn.Linear(64, nActions)
+        self.layer1 = nn.LSTM(nObservations, 16,2,batch_first=True)
+        self.layer2 = nn.Linear(16, nActions)
 
     # Called with either one element to determine next action, or a batch
     # during optimisation. Returns tensor([[left0exp,right0exp]...]).
     def forward(self, x):
         output,_ = self.layer1(x)
         output = self.layer2(output)
-        out = torch.nn.functional.sigmoid(output)
-        return out
+        return output
     
 
