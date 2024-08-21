@@ -19,7 +19,7 @@ plt.ion()
 
 # if GPU is to be used
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-#device = torch.device("cpu") #DEBUG - force CPU
+device = torch.device("cpu") #DEBUG - force CPU
 
 
 def plotRewards(showResult=False):
@@ -89,15 +89,6 @@ def plotRewards(showResult=False):
     ax.set_title('F1 Score')
     ax.set_xlabel('Epoch')
     ax.set_ylabel('F1 Score')
-    f1Scores = []
-    for i in range(len(accMeasures)):
-        TP = accMeasures[i]["TP"]
-        FP = accMeasures[i]["FP"]
-        #TN = accMeasures[i]["TN"]
-        FN = accMeasures[i]["FN"]
-        precision = TP/(TP+FP)
-        recall = TP/(TP+FN)
-        f1Scores.append(2*(precision*recall)/(precision+recall+1e-10)) #avoid division by zero
     ax.plot(f1Scores)
     #tockF1 = time.time()
     #print("Time taken to plot f1: ",tockF1-tickF1)
@@ -118,8 +109,8 @@ def plotRewards(showResult=False):
     #print("Time taken to plot: ",tockPlot-tickPlot)
 
 
-def rewarding(action,iteration):
-    if action == outcomeSplit[iteration]: #if correct action
+def rewarding(action,iteration,labels):
+    if action == labels[iteration].item(): #if correct action
       if action == 0: #if no anomaly
          return 2
       else: #if anomaly
@@ -128,7 +119,7 @@ def rewarding(action,iteration):
       if action == 0: #says no anomaly but there is
          return 0
       else: #says there is anomaly but there isn't
-         return 0
+         return -5
 
 
 # BATCHSIZE is the number of transitions sampled from the replay buffer
@@ -152,45 +143,30 @@ LR = 1e-3
 
 nActions = 2 # 0th -> no anomaly, 1st -> anomaly
 
-TAG = pd.read_csv("mergedKDD.csv",header=0)
+TAG = pd.read_csv("mergedSynth.csv",header=0)
 TAG,outcome = TAG.iloc[:,1:-1],TAG.iloc[:,len(TAG.keys())-1] # split into observations and outcomes
 names = TAG.iloc[0].index.values
 
+#Tag to a tensor
+TAG = torch.tensor(TAG.values, dtype=torch.float32)
 
 # Each episode is a sequence of observations with a single outcomes - 1 if at least one of the observations is 1, 0 otherwise
 
 #Create a sliding window of 'steps' time steps
 steps = 10  # 10 points per episode
-temp = []
+seq = []
+labels = []
 for i in range(0,len(TAG)-steps+1): 
-    temp.append(TAG.iloc[i:i+steps].values)
-TAGSplit = temp
-
-# Now need to handle the outcomes
-temp = []
-buffer = 0
-for i in range(0,len(outcome)-steps+1):
-    if i < buffer:
-        start = 0
-    else:
-        start = i-buffer
-
-    if i+buffer+steps > len(outcome):
-        end = len(outcome)
-    else:
-        end = i+buffer+steps
-    holdingOutcome = outcome.iloc[start:end].values # buffer either side
-    if (holdingOutcome[-1]) == 1:
-        temp.append(1)
-    else:
-    
-        temp.append(0)
-outcomeSplit = temp
+    seq.append(TAG[i:i+steps])
+    labels.append(outcome.iloc[i+steps-1]) # outcome is the last observation in the sequence
+data = torch.stack(seq)
+labels = torch.tensor(labels)
 
 
+dataset = torch.utils.data.TensorDataset(data,labels)
+dataLoader = torch.utils.data.DataLoader(dataset,batch_size=BATCHSIZE)
 #state is the observation of the environment
-state = TAG.iloc[0] #reset the environment and get the initial state
-nObservations = len(state)
+nObservations = data.shape[1]
 
 policyNet = model.DQN(nObservations, nActions).to(device)
 targetNet = model.DQN(nObservations, nActions).to(device)
@@ -199,6 +175,7 @@ targetNet.load_state_dict(policyNet.state_dict())
 optimiser = optim.AdamW(policyNet.parameters(), lr=LR, amsgrad=True)
 memory = model.ReplayMemory(300)
 
+torch.save(targetNet.state_dict(), "targetNet.pth")
 
 stepsDone = 0
 
@@ -206,61 +183,59 @@ episodeRewards = []
 chosenActions = []
 correctActions = []
 epsValues = []
-accMeasures =[]
+f1Scores =[]
 
 
 
-numEpisodes = len(TAGSplit)
-epoch = 20 #Run through all the data 'epoch' times
+
+epoch = 1000 #Run through all the data 'epoch' times
 
 #tockSetup = time.time()
 #print("Time taken to setup: ",tockSetup-tickSetup)
-thisEpochActions = []
-thisEpochCorrect = []
 
 counter = 0
+highestF1 = 0
 for eachEpoch in range(epoch):
     thisEpochActions = []
     thisEpochCorrect = []
     #tickEpoch = time.time()
     #print("Epoch: ",eachEpoch)
-    for iEpisode in range(numEpisodes):
+    for iEpisode, (batchedState,batchedOutcome) in enumerate(dataLoader):
         counter += 1
         #tickEpisode = time.time()
 
-        # Initialize the environment and get its state
-        episode = TAGSplit[iEpisode]
-    
+        # Might be uneccessary
+        batchedState = batchedState.to(device)
+        batchedOutcome = batchedOutcome.to(device)
 
-        state = torch.tensor(episode, dtype=torch.float32, device=device)
-        action,stepsDone = model.selectAction(state, policyNet, device, stepsDone, EPSSTART, EPSEND, EPSDECAY)
-        reward = rewarding(action.item(),iEpisode) # reward of the episode
-        correctAction = outcomeSplit[iEpisode]
-
-        thisEpochActions.append(action.item())
-        thisEpochCorrect.append(correctAction)
-
-        reward = torch.tensor([reward], device=device)
-        # Next state is the next episode
-        if iEpisode == numEpisodes-1:            
-            nextState = None
-            memory.push(state, action,nextState, reward,correctAction)  # Correct action passed to memory for oversampling
-        else: 
-            nextState = torch.tensor(TAGSplit[iEpisode+1], dtype=torch.float32, device=device)
-            memory.push(state, action,nextState, reward,correctAction)
-
+        actions,stepsDone = model.selectAction(batchedState, policyNet, device, stepsDone, EPSSTART, EPSEND, EPSDECAY)
+        rewards = torch.tensor([rewarding(action.item(),index,batchedOutcome) for index,action in enumerate(actions)], device=device)
+        
+        if len(batchedState) > 1:
+            nextStates = batchedState[1:]
+        else:
+            nextStates = torch.zeros_like(batchedState)  # Padding for the last state if needed
+        
+        for state,action,nextState,reward,correctAction in zip(batchedState,actions,nextStates,rewards,batchedOutcome):
+            memory.push(state,action,nextState,reward,correctAction)
       
         model.optimiseModel(memory,BATCHSIZE,GAMMA,policyNet,targetNet,optimiser,device)
+
         targetNetStateDict = targetNet.state_dict()
         policyNetStateDict = policyNet.state_dict()
         for key in policyNetStateDict:
             targetNetStateDict[key] = policyNetStateDict[key]*TAU + targetNetStateDict[key]*(1-TAU)
         targetNet.load_state_dict(targetNetStateDict)
-        episodeRewards.append(reward)
-        chosenActions.append(action.item())
-        correctActions.append(correctAction)
-        epsValues.append(EPSEND + (EPSSTART - EPSEND) * \
-        math.exp(-1. * stepsDone / EPSDECAY))
+
+        thisEpochActions.extend(actions.tolist())
+        thisEpochCorrect.extend(batchedOutcome.tolist())
+
+        episodeRewards.extend(rewards.tolist())
+        chosenActions.extend(actions.tolist())
+        correctActions.extend(batchedOutcome.tolist())
+
+
+        epsValues.append(EPSEND + (EPSSTART - EPSEND) * math.exp(-1. * stepsDone / EPSDECAY))
         #tockEpisode = time.time()
         #print("Time taken for episode: ",tockEpisode-tickEpisode)
         if counter % 100 == 0:
@@ -277,7 +252,7 @@ for eachEpoch in range(epoch):
     for i in range(len(thisEpochCorrect)):
         if thisEpochCorrect[i] == 1:
             anomWindow = True
-            if thisEpochActions[i] == 1:
+            if thisEpochActions[i][0] == 1:
                 anomDetected = 1
         else:
             if anomWindow:
@@ -287,17 +262,25 @@ for eachEpoch in range(epoch):
                 else:
                     FN += 1
                 anomDetected = 0
-            if thisEpochActions[i] == 1:
+            if thisEpochActions[i][0] == 1:
                 FP += 1
             else:
                 TN += 1
 
-    accMeasures.append({"TP":TP,"FP":FP,"TN":TN,"FN":FN})
-
+    precision = TP/(TP+FP+1e-10) #avoid division by zero
+    recall = TP/(TP+FN+1e-10) #avoid division by zero
+    f1 = 2*(precision*recall)/(precision+recall+1e-10) #avoid division by zero
+    f1Scores.append(f1)
+    if f1 > highestF1:
+        highestF1 = f1
+        #save model
+        torch.save(targetNet.state_dict(), "targetNet.pth")
+        with open("highestF1.txt","w") as f:
+            f.write(str(highestF1))
 
     #tockEpoch = time.time()
     #print("Time taken for epoch: ",tockEpoch-tickEpoch)
-    
+
 
        
 print('Complete')

@@ -11,7 +11,6 @@ class Encoder(nn.Module):
         self.hidden = hiddenSize
         self.layers = layers
         self.lstm = nn.LSTM(inputSize, hiddenSize, layers, batch_first=True, dropout=0.1, bidirectional=False)
-        self.relu = nn.ReLU()
         
     def forward(self, x):
         output, (hidden, cell) = self.lstm(x)
@@ -25,7 +24,6 @@ class Decoder(nn.Module):
         self.layers = layers
         self.lstm = nn.LSTM(inputSize, hiddenSize, layers, batch_first=True, dropout=0.1, bidirectional=False)
         self.fc = nn.Linear(hiddenSize, outputSize)
-        self.relu = nn.ReLU()
 
     def forward(self, x, hidden):
         output, (hidden, cell) = self.lstm(x, hidden)

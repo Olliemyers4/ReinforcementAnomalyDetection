@@ -22,11 +22,11 @@ def optimiseModel(memory,BATCHSIZE,GAMMA,policyNet,targetNet,optimiser,device):
     non_final_mask = torch.tensor(tuple(map(lambda s: s is not None,
                                           batch.nextState)), device=device, dtype=torch.bool)
 
-    non_final_next_states = torch.cat([s for s in batch.nextState
+    non_final_next_states = torch.stack([s for s in batch.nextState
                                                 if s is not None])
-    state_batch = torch.cat(batch.state)
-    action_batch = torch.cat(batch.action)
-    reward_batch = torch.cat(batch.reward)
+    state_batch = torch.stack(batch.state)
+    action_batch = torch.stack(batch.action)
+    reward_batch = torch.stack(batch.reward)
 
     # Compute Q(s_t, a) - the model computes Q(s_t), then we select the
     # columns of actions taken. These are the actions which would've been taken
@@ -40,7 +40,7 @@ def optimiseModel(memory,BATCHSIZE,GAMMA,policyNet,targetNet,optimiser,device):
     # state value or 0 in case the state was final.
     next_state_values = torch.zeros(BATCHSIZE, device=device)
     with torch.no_grad():
-        next_state_values[non_final_mask] = targetNet(non_final_next_states)[-1].unsqueeze(0).max(1).values
+        next_state_values[non_final_mask] = targetNet(non_final_next_states).max(1).values
     # Compute the expected Q values
     expected_state_action_values = (next_state_values * GAMMA) + reward_batch
 
@@ -67,13 +67,14 @@ def selectAction(state, policyNet, device, stepsDone, EPSSTART, EPSEND, EPSDECAY
             # t.max(1) will return the largest column value of each row.
             # second column on max result is index of where max element was
             # found, so we pick action with the larger expected reward.
+            qValues = policyNet(state)
+            actions = qValues.max(1)[1].view(-1, 1)
 
-            return policyNet(state)[-1].unsqueeze(0).max(1).indices.view(1, 1),stepsDone
             #return policyNet(state).max(1).indices.view(1, 1)
     else:
-        action = random.choice([0, 1])
-        return torch.tensor([[action]], device=device, dtype=torch.long),stepsDone
+        actions = torch.tensor([[random.choice([0,1])] for _ in range(state.size(0))], device=device, dtype=torch.long).view(-1, 1)
 
+    return actions, stepsDone
 
 Transition = namedtuple('Transition',
                         ('state', 'action', 'nextState', 'reward','correctAction'))
@@ -119,7 +120,7 @@ class DQN(nn.Module):
     # during optimisation. Returns tensor([[left0exp,right0exp]...]).
     def forward(self, x):
         output,_ = self.layer1(x)
-        output = self.layer2(output)
+        output = self.layer2(output[:,-1,:]) # Get the last output of the LSTM
         return output
     
 
