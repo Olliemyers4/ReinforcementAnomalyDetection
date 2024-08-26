@@ -27,10 +27,10 @@ def optimiseModel(memory,BATCHSIZE,GAMMA,policyNet,targetNet,optimiser,device):
     state_batch = torch.stack(batch.state)
     action_batch = torch.stack(batch.action)
     reward_batch = torch.stack(batch.reward)
-
     # Compute Q(s_t, a) - the model computes Q(s_t), then we select the
     # columns of actions taken. These are the actions which would've been taken
     # for each batch state according to policy_net
+    policyNet.layer1.flatten_parameters()
     state_action_values = policyNet(state_batch).gather(1, action_batch)
 
     # Compute V(s_{t+1}) for all next states.
@@ -47,7 +47,6 @@ def optimiseModel(memory,BATCHSIZE,GAMMA,policyNet,targetNet,optimiser,device):
     # Compute Huber loss
     criterion = nn.SmoothL1Loss()
     loss = criterion(state_action_values, expected_state_action_values.unsqueeze(1))
-
     # Optimize the model
     optimiser.zero_grad()
     loss.backward()
@@ -67,6 +66,7 @@ def selectAction(state, policyNet, device, stepsDone, EPSSTART, EPSEND, EPSDECAY
             # t.max(1) will return the largest column value of each row.
             # second column on max result is index of where max element was
             # found, so we pick action with the larger expected reward.
+            policyNet.layer1.flatten_parameters()
             qValues = policyNet(state)
             actions = qValues.max(1)[1].view(-1, 1)
 
@@ -95,9 +95,9 @@ class ReplayMemory(object):
         sampleWeights = []
         for i in range(len(self.memory)):
             if self.memory[i].correctAction == 1:
-                sampleWeights.append(0.25)
-            else:
                 sampleWeights.append(0.1)
+            else:
+                sampleWeights.append(0.115)
         sampleWeights = np.array(sampleWeights)
         sampleWeights = sampleWeights / sampleWeights.sum()
         return random.choices(self.memory, weights=sampleWeights, k=batchSize)

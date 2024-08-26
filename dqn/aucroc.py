@@ -2,7 +2,7 @@ import torch
 import model
 import pandas as pd
 import numpy as np
-from sklearn.metrics import roc_curve, auc
+from sklearn.metrics import roc_curve, auc, f1_score
 import matplotlib.pyplot as plt
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -19,7 +19,7 @@ LR = 1e-3
 
 nActions = 2 # 0th -> no anomaly, 1st -> anomaly
 
-TAG = pd.read_csv("mergedSynth.csv",header=0)
+TAG = pd.read_csv("mergedKDDTest.csv",header=0)
 TAG,outcome = TAG.iloc[:,1:-1],TAG.iloc[:,len(TAG.keys())-1] # split into observations and outcomes
 names = TAG.iloc[0].index.values
 
@@ -42,35 +42,40 @@ labels = torch.tensor(labels)
 dataset = torch.utils.data.TensorDataset(data,labels)
 dataLoader = torch.utils.data.DataLoader(dataset,batch_size=BATCHSIZE)
 #state is the observation of the environment
-nObservations = data.shape[1]
+nObservations = data.shape[2]
 
-policyNet = model.DQN(nObservations, nActions).to(device)
 targetNet = model.DQN(nObservations, nActions).to(device)
-targetNet.load_state_dict(policyNet.state_dict())
 
-targetNet.load_state_dict(torch.load("targetNet.pth"))
+targetNet.load_state_dict(torch.load("targetNetNSLKKDDWeightedMajority45m4m4.pth"))
 targetNet.eval()
 
 network = targetNet
 
 # Run model on test data
-normalQs, anomalyQs = [], []
+normalQs, anomalyQs,actionList = [], [], []
 with torch.no_grad():
     for iEpisode, (batchedState, batchedOutcome) in enumerate(dataLoader):
         batchState = batchedState.to(device)
         qValues = network(batchedState)
-        
-        # Assuming qValues output shape is [batch_size, seq_len, nActions]
-        normalQs.extend(qValues[:, 0].cpu().numpy())
-        anomalyQs.extend(qValues[:, 1].cpu().numpy())
 
-# Convert lists to numpy arrays
-normalQs = np.array(normalQs)
-anomalyQs = np.array(anomalyQs)
-score = anomalyQs - normalQs  # Compute the score for ROC
+        actons = qValues.max(1)[1].view(-1, 1)
+        actionList.extend(actons.cpu().numpy())
+        # Assuming qValues output shape is [batch_size, seq_len, nActions]
+#         normalQs.extend(qValues[:, 0].cpu().numpy())
+#         anomalyQs.extend(qValues[:, 1].cpu().numpy())
+
+# # Convert lists to numpy arrays
+# normalQs = np.array(normalQs)
+# anomalyQs = np.array(anomalyQs)
+# score = np.ones(len(normalQs))
+
+#compute f1 score
+f1 = f1_score(labels, actionList)
+print("F1 Score: ", f1)
+
 
 # Compute ROC curve and AUC
-fpr, tpr, _ = roc_curve(labels, score)
+fpr, tpr, _ = roc_curve(labels, actionList)
 aucroc = auc(fpr, tpr)
 print("AUC ROC: ", aucroc)
 

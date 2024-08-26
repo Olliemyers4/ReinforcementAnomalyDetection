@@ -3,10 +3,8 @@ import torch
 import pandas as pd
 from torch.utils.data import Dataset, DataLoader
 
-# https://github.com/JoungheeKim/autoencoder-lstm/blob/main/autoencoderLSTM_tutorial(english).ipynb
-
 class Encoder(nn.Module):
-    def __init__(self,inputSize=3,hiddenSize=2,layers=2): #Revisit this 
+    def __init__(self,inputSize=3,hiddenSize=2,layers=2):
         super(Encoder, self).__init__()
         self.hidden = hiddenSize
         self.layers = layers
@@ -143,7 +141,7 @@ def train(learningRate, epochs,runTillConvergence,device, layers, hiddenSize, mo
 
 
 #Clean
-clean = pd.read_csv('KDDTrainAE.csv')
+clean = pd.read_csv('KDDTestAE.csv')
 
 # Assuming your data is in a single column and each row represents a timestep - change this to match your data
 #We only care about the columns that arent the first and last ones as they are the class and index
@@ -152,7 +150,7 @@ timeseriesClean= torch.tensor(clean.iloc[:,1:-1].values, dtype=torch.float32)
 
 
 #Anomalous data to get reconstruction error
-anom = pd.read_csv('KDDTrainNumerical.csv')
+anom = pd.read_csv('KDDTestNumerical.csv')
 # Assuming your data is in a single column and each row represents a timestep - change this to match your data
 timeseriesAnom = torch.tensor(anom.iloc[:,1:-1].values, dtype=torch.float32)
 

@@ -18,7 +18,7 @@ if isIpython:
 plt.ion()
 
 # if GPU is to be used
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 device = torch.device("cpu") #DEBUG - force CPU
 
 
@@ -38,8 +38,25 @@ def plotRewards(showResult=False):
     #----------------------------------------------------------------------------------------------------------------
     # Plotting the reward values over time with 100 point moving average
     #tickAvg = time.time()
-    ax = axs[0]
+    # ax = axs[0]
 
+    # if showResult:
+    #     ax.set_title('Result')
+    # else:
+    #     ax.set_title('Training...')
+    # ax.set_xlabel('Episode')
+    # ax.set_ylabel('Reward')
+    # plotDur = durationsT.numpy()
+    # ax.plot(plotDur)
+    # # Take 100 episode averages and plot them too
+    # if len(durationsT) >= 100:
+    #     means = durationsT.unfold(0, 100, 1).mean(1).view(-1)
+    #     means = torch.cat((torch.zeros(99), means)).numpy()
+    #     ax.plot(means)
+
+    #plot the reward values over time with 100 point moving average
+    #only plot last 10k points
+    ax = axs[0]
     if showResult:
         ax.set_title('Result')
     else:
@@ -47,12 +64,13 @@ def plotRewards(showResult=False):
     ax.set_xlabel('Episode')
     ax.set_ylabel('Reward')
     plotDur = durationsT.numpy()
-    ax.plot(plotDur)
+    ax.plot(plotDur[-10000:])
     # Take 100 episode averages and plot them too
     if len(durationsT) >= 100:
         means = durationsT.unfold(0, 100, 1).mean(1).view(-1)
         means = torch.cat((torch.zeros(99), means)).numpy()
-        ax.plot(means)
+        ax.plot(means[-10000:])
+    
 
     #tockAvg = time.time()
     #print("Time taken to plot average: ",tockAvg-tickAvg)
@@ -117,7 +135,7 @@ def rewarding(action,iteration,labels):
          return 5
     else: #if wrong action
       if action == 0: #says no anomaly but there is
-         return 0
+         return -1
       else: #says there is anomaly but there isn't
          return -5
 
@@ -138,12 +156,12 @@ EPSSTART = 0.8
 EPSEND = 0.075
 EPSDECAY = 2000
 TAU = 0.001
-LR = 1e-3
+LR = 1e-4
 
 
 nActions = 2 # 0th -> no anomaly, 1st -> anomaly
 
-TAG = pd.read_csv("mergedSynth.csv",header=0)
+TAG = pd.read_csv("mergedKDDTrain.csv",header=0)
 TAG,outcome = TAG.iloc[:,1:-1],TAG.iloc[:,len(TAG.keys())-1] # split into observations and outcomes
 names = TAG.iloc[0].index.values
 
@@ -153,7 +171,7 @@ TAG = torch.tensor(TAG.values, dtype=torch.float32)
 # Each episode is a sequence of observations with a single outcomes - 1 if at least one of the observations is 1, 0 otherwise
 
 #Create a sliding window of 'steps' time steps
-steps = 10  # 10 points per episode
+steps = 50  # 10 points per episode
 seq = []
 labels = []
 for i in range(0,len(TAG)-steps+1): 
@@ -188,13 +206,14 @@ f1Scores =[]
 
 
 
-epoch = 1000 #Run through all the data 'epoch' times
+epoch = 1500 #Run through all the data 'epoch' times
 
 #tockSetup = time.time()
 #print("Time taken to setup: ",tockSetup-tickSetup)
 
 counter = 0
 highestF1 = 0
+savedModels = 0
 for eachEpoch in range(epoch):
     thisEpochActions = []
     thisEpochCorrect = []
@@ -238,8 +257,6 @@ for eachEpoch in range(epoch):
         epsValues.append(EPSEND + (EPSSTART - EPSEND) * math.exp(-1. * stepsDone / EPSDECAY))
         #tockEpisode = time.time()
         #print("Time taken for episode: ",tockEpisode-tickEpisode)
-        if counter % 100 == 0:
-            plotRewards()
 
     #At the end of the epoch handle the accuracy etc
     anomDetected = 0
@@ -274,13 +291,14 @@ for eachEpoch in range(epoch):
     if f1 > highestF1:
         highestF1 = f1
         #save model
-        torch.save(targetNet.state_dict(), "targetNet.pth")
+        savedModels += 1
+        torch.save(targetNet.state_dict(), f"targetNet{savedModels}.pth")
         with open("highestF1.txt","w") as f:
             f.write(str(highestF1))
 
     #tockEpoch = time.time()
     #print("Time taken for epoch: ",tockEpoch-tickEpoch)
-
+    plotRewards()
 
        
 print('Complete')

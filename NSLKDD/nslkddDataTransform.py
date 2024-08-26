@@ -4,7 +4,7 @@
 import pandas as pd
 import numpy as np
 
-df = pd.read_csv("KDDTrain.csv",header=0)
+df = pd.read_csv("KDDTest2.csv",header=0)
 
 
 
@@ -14,9 +14,9 @@ df["service"] = df["service"].astype("category").cat.codes
 df["flag"] = df["flag"].astype("category").cat.codes
 df["class"] = df["class"].astype("category").cat.codes
 
-df.to_csv("KDDTrainNumerical.csv",index=False)
+df.to_csv("KDDTestNumerical.csv",index=False)
 
 
 #remove rows where anomaly is 1
 df = df[df["class"] != 1]
-df.to_csv("KDDTrainAE.csv",index=False)
+df.to_csv("KDDTestAE.csv",index=False)
